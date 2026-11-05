@@ -1,0 +1,22 @@
+{
+  "name": "college-event-management-system",
+  "version": "1.0.0",
+  "description": "College Event Management System using Express.js and MySQL",
+  "main": "app7a-0.js",
+  "scripts": {
+    "start": "node app7a-0.js",
+    "test": "node --check app7a-0.js"
+  },
+  "keywords": [
+    "college",
+    "events",
+    "crud",
+    "mysql"
+  ],
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.3.0",
+    "mysql2": "^3.24.5"
+  }
+}

@@ -1,0 +1,41 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>All Events</title><link rel="stylesheet" href="style.css"></head>
+<body><header><h1>College Event Management</h1><nav class="nav"><a href="index.html">Home</a><a href="list.html">All Events</a><a href="insert.html">Add Event</a></nav></header>
+<main class="container"><h2>All Events</h2><p class="muted">View, search, edit or delete event records.</p><div id="message" class="message" role="status"></div>
+<div class="search-row" id="search"><input id="searchInput" type="search" placeholder="Search by event name, type, venue or description" aria-label="Search events"><button id="searchButton">Search</button><button class="secondary" id="clearButton">Clear</button><button class="secondary" id="refreshButton">Refresh</button></div>
+<p class="helper" id="count">Loading events…</p><div class="table-wrap"><table><thead><tr><th>ID</th><th>Photo</th><th>Event Name</th><th>Type</th><th>Date</th><th>Venue</th><th>Description</th><th>Actions</th></tr></thead><tbody id="eventRows"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody></table></div></main>
+<footer class="footer">College Event Management System</footer>
+<script>
+const rows=document.getElementById("eventRows"), searchInput=document.getElementById("searchInput");
+function esc(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function formatDate(value){return value?String(value).slice(0,10):"—";}
+function message(text,error=false){const el=document.getElementById("message");el.textContent=text;el.className="message "+(error?"error":"success");}
+async function loadEvents(){
+  rows.innerHTML='<tr><td colspan="8" class="empty">Loading events…</td></tr>';
+  const q=searchInput.value.trim();
+  try{
+    const response=await fetch("/events"+(q?"?search="+encodeURIComponent(q):""));
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||"Could not load events.");
+    document.getElementById("count").textContent=data.length+" event(s) found";
+    if(!data.length){rows.innerHTML='<tr><td colspan="8" class="empty">No events found. Add an event or try another search.</td></tr>';return;}
+    rows.innerHTML=data.map(event=>`<tr>
+      <td>${esc(event.EventID)}</td>
+      <td>${event.Photos?`<img class="event-photo" src="${event.Photos}" alt="Photo for ${esc(event.EventName)}">`:"—"}</td>
+      <td>${esc(event.EventName)}</td><td>${esc(event.Type)}</td><td>${esc(formatDate(event.Date))}</td>
+      <td>${esc(event.Venue)}</td><td>${esc(event.Description||"—")}</td>
+      <td><a class="button" href="update.html?id=${encodeURIComponent(event.EventID)}">Edit</a><button class="danger" onclick="deleteEvent(${Number(event.EventID)})">Delete</button></td>
+    </tr>`).join("");
+  }catch(error){rows.innerHTML=`<tr><td colspan="8" class="empty">${esc(error.message)}</td></tr>`;document.getElementById("count").textContent="Could not load events";}
+}
+async function deleteEvent(id){
+ if(!confirm("Delete event #"+id+"? This cannot be undone."))return;
+ try{const response=await fetch("/events/"+id,{method:"DELETE"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Delete failed.");message(data.message);loadEvents();}
+ catch(error){message(error.message,true);}
+}
+document.getElementById("searchButton").addEventListener("click",loadEvents);
+document.getElementById("clearButton").addEventListener("click",()=>{searchInput.value="";loadEvents();});
+document.getElementById("refreshButton").addEventListener("click",loadEvents);
+searchInput.addEventListener("keydown",e=>{if(e.key==="Enter")loadEvents();});
+searchInput.addEventListener("input",()=>{if(!searchInput.value.trim())loadEvents();});
+loadEvents();
+</script></body></html>

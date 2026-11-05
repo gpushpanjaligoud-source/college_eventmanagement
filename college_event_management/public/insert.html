@@ -1,0 +1,67 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Add Event</title><link rel="stylesheet" href="style.css"></head>
+<body><header><h1>College Event Management</h1><nav class="nav">
+<a href="index.html">Home</a><a href="list.html">All Events</a><a href="insert.html">Add Event</a>
+</nav></header><main class="container"><h2 id="formTitle">Add a New Event</h2><p class="muted">Fields marked required must be completed. Event ID is generated automatically.</p><div id="message" class="message" role="status"></div>
+<form id="eventForm"><div class="form-grid">
+<div class="field"><label for="EventName">Event Name *</label><input id="EventName" maxlength="150" required placeholder="e.g. Annual College Fest"></div>
+<div class="field"><label for="Type">Event Type *</label><select id="Type" required><option value="">Select event type</option><option>Seminar</option><option>Workshop</option><option>Cultural</option><option>Technical</option><option>Sports</option><option>Fest</option><option>Competition</option><option>Other</option></select></div>
+<div class="field"><label for="Date">Event Date *</label><input id="Date" type="date" required></div>
+<div class="field"><label for="Venue">Venue *</label><input id="Venue" maxlength="180" required placeholder="e.g. Main Auditorium"></div>
+<div class="field full"><label for="Description">Description</label><textarea id="Description" rows="4" placeholder="Enter event details"></textarea></div>
+<div class="field full"><label for="Photos">Event Photo (optional, max 1 MB)</label><input id="Photos" type="file" accept="image/*"><img id="photoPreview" class="preview" alt="Selected event photo preview" hidden></div>
+</div><div class="form-actions"><button id="submitButton" type="submit">Save Event</button><a class="button secondary" href="list.html">Cancel</a></div></form></main><footer class="footer">College Event Management System</footer><script>
+const form = document.getElementById("eventForm");
+const photoInput = document.getElementById("Photos");
+const preview = document.getElementById("photoPreview");
+let photoData = "";
+photoInput.addEventListener("change", () => {
+  const file = photoInput.files && photoInput.files[0];
+  if (!file) { photoData = ""; preview.hidden = true; preview.removeAttribute("src"); return; }
+  if (!file.type.startsWith("image/")) { showMessage("Please select an image file.", true); photoInput.value=""; return; }
+  if (file.size > 1024 * 1024) { showMessage("Please choose an image smaller than 1 MB.", true); photoInput.value=""; return; }
+  const reader = new FileReader();
+  reader.onload = () => { photoData = String(reader.result); preview.src = photoData; preview.hidden = false; };
+  reader.readAsDataURL(file);
+});
+function showMessage(text, error=false) {
+  const box=document.getElementById("message"); box.textContent=text; box.className="message "+(error?"error":"success");
+}
+function dateForInput(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value.slice(0,10);
+  return new Date(value).toISOString().slice(0,10);
+}
+async function loadEvent(id) {
+  try {
+    const response=await fetch("/events/"+encodeURIComponent(id));
+    const data=await response.json();
+    if (!response.ok) throw new Error(data.error || "Could not load event.");
+    ["EventName","Type","Date","Venue","Description"].forEach(key => {
+      document.getElementById(key).value = key==="Date" ? dateForInput(data[key]) : (data[key] || "");
+    });
+    photoData=data.Photos || "";
+    if(photoData){preview.src=photoData;preview.hidden=false;}
+    document.getElementById("formTitle").textContent="Edit Event #"+data.EventID;
+    document.getElementById("submitButton").textContent="Save Changes";
+    form.dataset.id=data.EventID;
+  } catch(error) { showMessage(error.message,true); }
+}
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const payload={};
+  ["EventName","Type","Date","Venue","Description"].forEach(key => payload[key]=document.getElementById(key).value.trim());
+  payload.Photos=photoData || null;
+  const id=form.dataset.id;
+  try {
+    const response=await fetch(id?"/events/"+encodeURIComponent(id):"/events",{
+      method:id?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)
+    });
+    const data=await response.json();
+    if(!response.ok) throw new Error(data.error || "Unable to save event.");
+    showMessage(data.message || "Saved successfully.");
+    setTimeout(()=>location.href="list.html",650);
+  } catch(error) { showMessage(error.message,true); }
+});
+const editId=new URLSearchParams(location.search).get("id");
+if(editId) loadEvent(editId);
+</script></body></html>
